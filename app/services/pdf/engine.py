@@ -1,22 +1,53 @@
+import os
+import subprocess
+import sys
+
 from playwright.sync_api import sync_playwright
 
 from app.services.pdf.assets import BROWSER_DIR, PROJECT_ROOT
 
 
-def resolve_chromium_executable() -> str | None:
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(BROWSER_DIR))
+
+
+def _find_browser_binary() -> str | None:
+    patterns = (
+        "chromium-*/chrome-win/chrome.exe",
+        "chromium-*/chrome-linux/chrome",
+        "chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+        "chromium_headless_shell-*/chrome-win/headless_shell.exe",
+        "chromium_headless_shell-*/chrome-linux/headless_shell",
+        "chromium_headless_shell-*/chrome-mac/headless_shell",
+    )
+
     configured_path = PROJECT_ROOT / ".playwright-browsers"
     for browser_root in (configured_path, BROWSER_DIR):
         if not browser_root.exists():
             continue
 
-        matches = sorted(
-            browser_root.glob("chromium-*/chrome-win/chrome.exe"),
-            reverse=True,
-        )
-        if matches:
-            return str(matches[0])
+        for pattern in patterns:
+            matches = sorted(browser_root.glob(pattern), reverse=True)
+            if matches:
+                return str(matches[0])
 
     return None
+
+
+def resolve_chromium_executable() -> str | None:
+    chromium_executable = _find_browser_binary()
+    if chromium_executable is not None:
+        return chromium_executable
+
+    BROWSER_DIR.mkdir(parents=True, exist_ok=True)
+    install_env = os.environ.copy()
+    install_env["PLAYWRIGHT_BROWSERS_PATH"] = str(BROWSER_DIR)
+    subprocess.run(
+        [sys.executable, "-m", "playwright", "install", "chromium"],
+        check=True,
+        env=install_env,
+    )
+
+    return _find_browser_binary()
 
 
 def render_pdf_document(
