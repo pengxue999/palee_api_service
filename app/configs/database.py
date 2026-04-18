@@ -11,20 +11,47 @@ DB_PORT = os.getenv("DB_PORT", "3306")
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "99999999")
 DB_NAME = os.getenv("DB_NAME", "palee_elite_training_center")
+DATABASE_URL = os.getenv("DATABASE_URL")
+DB_SSL_ENABLED = os.getenv("DB_SSL_ENABLED", "").lower()
+DB_SSL_CA = os.getenv("DB_SSL_CA")
 
-DATABASE_URL = (
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    "?charset=utf8mb4"
-)
+
+def _is_truthy(value: str | None) -> bool:
+    return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _should_use_ssl() -> bool:
+    if DB_SSL_ENABLED:
+        return _is_truthy(DB_SSL_ENABLED)
+    return DB_HOST not in {"localhost", "127.0.0.1"}
+
+
+def _build_database_url() -> str:
+    if DATABASE_URL:
+        return DATABASE_URL
+
+    return (
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        "?charset=utf8mb4"
+    )
+
+
+def _build_connect_args() -> dict:
+    if not _should_use_ssl():
+        return {}
+
+    ssl_options = {}
+    if DB_SSL_CA:
+        ssl_options["ca"] = DB_SSL_CA
+
+    return {"ssl": ssl_options}
+
+DATABASE_URL = _build_database_url()
 
 engine = create_engine(
     DATABASE_URL,
     echo=False,
-    connect_args={
-        "ssl": {
-            "ca": os.getenv("DB_SSL_CA"),
-        }
-    },
+    connect_args=_build_connect_args(),
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
