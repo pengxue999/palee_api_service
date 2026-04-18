@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from app.configs.database import get_db
 from app.schemas.tuition_payment import TuitionPaymentCreate, TuitionPaymentUpdate, TuitionPaymentResponse
 from app.configs.response import success_response
 from app.services import tuition_payment as svc
+from app.services import receipt_pdf as receipt_pdf_svc
 
 router = APIRouter(prefix="/tuition-payments", tags=["ການຈ່າຍຄ່າຮຽນ"])
 
@@ -26,11 +27,39 @@ def get_by_registration(registration_id: str, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/by-registration/{registration_id}/history-pdf")
+def get_payment_history_pdf(registration_id: str, db: Session = Depends(get_db)):
+    report_data = svc.build_payment_history_report_request(db, registration_id)
+    pdf_bytes = receipt_pdf_svc.build_tuition_payment_history_report_pdf(report_data)
+    filename = f'tuition_payment_history_{registration_id}.pdf'
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
 @router.get("/{payment_id}")
 def get_one(payment_id: str, db: Session = Depends(get_db)):
     return success_response(
         TuitionPaymentResponse.model_validate(svc.get_by_id(db, payment_id)),
         "ດຶງຂໍ້ມູນການຈ່າຍຄ່າຮຽນສຳເລັດ"
+    )
+
+
+@router.get("/{payment_id}/receipt-pdf")
+def get_receipt_pdf(payment_id: str, db: Session = Depends(get_db)):
+    receipt_data = svc.build_receipt_request(db, payment_id)
+    pdf_bytes = receipt_pdf_svc.build_tuition_payment_receipt_pdf(receipt_data)
+    filename = f'tuition_payment_{payment_id}.pdf'
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 

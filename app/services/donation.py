@@ -1,28 +1,62 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.models.donor import Donor
-from app.models.donation_category import DonationCategory
 from app.models.donation import Donation
 from app.models.income import Income
 from app.schemas.donation import (
     DonationCreate, DonationUpdate,
 )
 from app.configs.exceptions import NotFoundException
+from app.utils.donation_category import is_cash_donation_name, normalize_donation_category_name
 
 
-def _is_cash_donation(db: Session, category_id: int) -> bool:
-    """Check if donation category is 'ເງິນສົດ' (cash donation)"""
-    category = db.query(DonationCategory).filter(
-        DonationCategory.donation_category_id == category_id
-    ).first()
-    return category and category.donation_category == "ເງິນສົດ"
+def _build_income_description(donor: Donor | None, donation_name: str) -> str:
+    if donor:
+        donor_fullname = f"{donor.donor_name} {donor.donor_lastname}".strip()
+        if donor_fullname:
+            return f"ການບໍລິຈາກ: {donor_fullname}"
+    return f"ການບໍລິຈາກ: {donation_name}"
+
+
+def _get_donor(db: Session, donor_id: str | None) -> Donor | None:
+    if not donor_id:
+        return None
+    return db.query(Donor).filter(Donor.donor_id == donor_id).first()
+
+
+def _sync_income_record(db: Session, donation: Donation) -> None:
+    income = db.query(Income).filter(Income.donation_id == donation.donation_id).first()
+    donor = _get_donor(db, donation.donor_id)
+
+    if income:
+        income.amount = donation.amount
+        income.description = _build_income_description(donor, donation.donation_name)
+        income.income_date = donation.donation_date if donation.donation_date else func.now()
+    else:
+        db.add(
+            Income(
+                donation_id=donation.donation_id,
+                amount=donation.amount,
+                description=_build_income_description(donor, donation.donation_name),
+                income_date=donation.donation_date if donation.donation_date else func.now(),
+            )
+        )
+
+
+def _delete_income_record(db: Session, donation_id: int) -> None:
+    income = db.query(Income).filter(Income.donation_id == donation_id).first()
+    if income:
+        db.delete(income)
+
+
+def _is_cash_donation_name_for_obj(donation: Donation) -> bool:
+    return is_cash_donation_name(donation.donation_category)
 
 
 
 def get_all(db: Session):
     return db.query(Donation).options(
         joinedload(Donation.donor),
-        joinedload(Donation.donation_category),
         joinedload(Donation.unit)
     ).all()
 
@@ -30,7 +64,6 @@ def get_all(db: Session):
 def get_by_id(db: Session, donation_id: int) -> Donation:
     obj = db.query(Donation).options(
         joinedload(Donation.donor),
-        joinedload(Donation.donation_category),
         joinedload(Donation.unit)
     ).filter(Donation.donation_id == donation_id).first()
     if not obj:
@@ -39,80 +72,53 @@ def get_by_id(db: Session, donation_id: int) -> Donation:
 
 
 def create(db: Session, data: DonationCreate):
-    obj = Donation(**data.model_dump())
+    payload = data.model_dump()
+    payload["donation_category"] = normalize_donation_category_name(data.donation_category)
+    obj = Donation(**payload)
     db.add(obj)
     db.commit()
     db.refresh(obj)
 
-    if _is_cash_donation(db, data.donation_category_id):
-        donor = db.query(Donor).filter(Donor.donor_id == data.donor_id).first()
-        donor_fullname = ""
-        if donor:
-            donor_fullname = f"{donor.donor_name} {donor.donor_lastname}"
-
-        income = Income(
-            donation_id=obj.donation_id,
-            amount=data.amount,
-            description=f"ການບໍລິຈາກ: {donor_fullname}" if donor_fullname else f"ການບໍລິຈາກ: {data.donation_name}",
-            income_date=data.donation_date if data.donation_date else func.now(),
-        )
-        db.add(income)
+    if is_cash_donation_name(obj.donation_category):
+        _sync_income_record(db, obj)
         db.commit()
 
-    return obj
+    return get_by_id(db, obj.donation_id)
 
 
 def update(db: Session, donation_id: int, data: DonationUpdate):
     obj = get_by_id(db, donation_id)
-    old_category_id = obj.donation_category_id
-    for field, value in data.model_dump(exclude_none=True).items():
+    old_is_cash = _is_cash_donation_name_for_obj(obj)
+
+    update_data = data.model_dump(exclude_none=True)
+    if data.donation_category is not None:
+        update_data["donation_category"] = normalize_donation_category_name(
+            data.donation_category
+        )
+
+    for field, value in update_data.items():
         setattr(obj, field, value)
     db.commit()
     db.refresh(obj)
 
-    new_category_id = obj.donation_category_id
+    new_is_cash = _is_cash_donation_name_for_obj(obj)
 
-    if not _is_cash_donation(db, old_category_id) and _is_cash_donation(db, new_category_id):
-        donor = db.query(Donor).filter(Donor.donor_id == obj.donor_id).first()
-        donor_fullname = ""
-        if donor:
-            donor_fullname = f"{donor.donor_name} {donor.donor_lastname}"
-
-        income = Income(
-            donation_id=obj.donation_id,
-            amount=obj.amount,
-            description=f"ການບໍລິຈາກ: {donor_fullname}" if donor_fullname else f"ການບໍລິຈາກ: {obj.donation_name}",
-            income_date=obj.donation_date if obj.donation_date else func.now(),
-        )
-        db.add(income)
+    if new_is_cash:
+        _sync_income_record(db, obj)
         db.commit()
 
-    elif _is_cash_donation(db, old_category_id) and not _is_cash_donation(db, new_category_id):
-        income = db.query(Income).filter(Income.donation_id == donation_id).first()
-        if income:
-            db.delete(income)
-            db.commit()
+    elif old_is_cash:
+        _delete_income_record(db, donation_id)
+        db.commit()
 
-    elif _is_cash_donation(db, old_category_id) and _is_cash_donation(db, new_category_id):
-        if data.amount is not None or data.donation_date is not None:
-            income = db.query(Income).filter(Income.donation_id == donation_id).first()
-            if income:
-                if data.amount is not None:
-                    income.amount = data.amount
-                if data.donation_date is not None:
-                    income.income_date = data.donation_date
-                db.commit()
-
-    return obj
+    return get_by_id(db, donation_id)
 
 
 def delete(db: Session, donation_id: int):
     obj = get_by_id(db, donation_id)
 
-    if _is_cash_donation(db, obj.donation_category_id):
-        income = db.query(Income).filter(Income.donation_id == donation_id).first()
-        if income:
-            db.delete(income)
+    if _is_cash_donation_name_for_obj(obj):
+        _delete_income_record(db, donation_id)
 
     db.delete(obj)
     db.commit()

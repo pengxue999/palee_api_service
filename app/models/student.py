@@ -18,5 +18,4 @@ class Student(Base):
 
     district = relationship("District", back_populates="students")
     dormitory = relationship("Dormitory", back_populates="students")
-    registrations = relationship("Registration", back_populates="student")
-    evaluation_details = relationship("EvaluationDetail", back_populates="student")
+    registrations = relationship("Registration", back_populates="student", passive_deletes=True)

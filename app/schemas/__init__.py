@@ -10,7 +10,12 @@ from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.schemas.teacher import TeacherCreate, TeacherUpdate, TeacherResponse
 from app.schemas.teacher_assignment import TeacherAssignmentCreate, TeacherAssignmentUpdate, TeacherAssignmentResponse
 from app.schemas.teaching_log import TeachingLogCreate, TeachingLogUpdate, TeachingLogResponse
-from app.schemas.salary_payment import SalaryPaymentCreate, SalaryPaymentUpdate, SalaryPaymentResponse
+from app.schemas.salary_payment import (
+    SalaryPaymentCreate,
+    SalaryPaymentUpdate,
+    SalaryPaymentResponse,
+    SalaryPaymentReceiptRequest,
+)
 from app.schemas.student import StudentCreate, StudentUpdate, StudentResponse
 from app.schemas.registration import (
     RegistrationCreate, RegistrationUpdate, RegistrationResponse,
@@ -26,6 +31,5 @@ from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse
 from app.schemas.income import IncomeCreate, IncomeUpdate, IncomeResponse
 from app.schemas.donation import (
     DonorCreate, DonorUpdate, DonorResponse,
-    DonationCategoryCreate, DonationCategoryUpdate, DonationCategoryResponse,
     DonationCreate, DonationUpdate, DonationResponse,
 )

@@ -18,13 +18,11 @@ from app.models.registration import Registration
 from app.models.registration_detail import RegistrationDetail
 from app.models.tuition_payment import TuitionPayment
 from app.models.evaluation import Evaluation
-from app.models.evaluation_subject import EvaluationSubject
 from app.models.evaluation_detail import EvaluationDetail
 from app.models.expense_category import ExpenseCategory
 from app.models.expense import Expense
 from app.models.income import Income
 from app.models.donor import Donor
-from app.models.donation_category import DonationCategory
 from app.models.unit import Unit
 from app.models.donation import Donation
 
@@ -32,6 +30,6 @@ __all__ = [
     "Province", "District", "AcademicYear", "SubjectCategory", "Subject",
     "Level", "SubjectDetail", "Fee", "Discount", "User", "Teacher", "TeacherAssignment",
     "TeachingLog", "SalaryPayment", "Dormitory", "Student", "Registration",
-    "RegistrationDetail", "TuitionPayment", "Evaluation", "EvaluationSubject", "EvaluationDetail",
-    "ExpenseCategory", "Expense", "Income", "Donor", "DonationCategory", "Unit", "Donation",
+    "RegistrationDetail", "TuitionPayment", "Evaluation", "EvaluationDetail",
+    "ExpenseCategory", "Expense", "Income", "Donor", "Unit", "Donation",
 ]

@@ -1,10 +1,21 @@
+from decimal import Decimal
+
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.models.tuition_payment import TuitionPayment
 from app.models.registration import Registration
+from app.models.registration_detail import RegistrationDetail
+from app.models.fee import Fee
+from app.models.subject_detail import SubjectDetail
 from app.models.income import Income
 from app.models.student import Student
-from app.schemas.tuition_payment import TuitionPaymentCreate, TuitionPaymentUpdate
+from app.schemas.tuition_payment import (
+    TuitionPaymentCreate,
+    TuitionPaymentHistoryItem,
+    TuitionPaymentHistoryReportRequest,
+    TuitionPaymentUpdate,
+    TuitionPaymentReceiptRequest,
+)
 from app.configs.exceptions import NotFoundException
 from app.enums.registration_status import RegistrationStatusEnum
 import re
@@ -70,11 +81,144 @@ def get_by_registration(db: Session, registration_id: str):
 
 def get_by_id(db: Session, tuition_payment_id: str) -> TuitionPayment:
     obj = db.query(TuitionPayment).options(
-        joinedload(TuitionPayment.registration).joinedload(Registration.student)
+        joinedload(TuitionPayment.registration).joinedload(Registration.student),
+        joinedload(TuitionPayment.registration).joinedload(Registration.discount),
+        joinedload(TuitionPayment.registration)
+        .joinedload(Registration.details)
+        .joinedload(RegistrationDetail.fee_rel)
+        .joinedload(Fee.subject_detail)
+        .joinedload(SubjectDetail.subject),
+        joinedload(TuitionPayment.registration)
+        .joinedload(Registration.details)
+        .joinedload(RegistrationDetail.fee_rel)
+        .joinedload(Fee.subject_detail)
+        .joinedload(SubjectDetail.level),
     ).filter(TuitionPayment.tuition_payment_id == tuition_payment_id).first()
     if not obj:
         raise NotFoundException("ຂໍ້ມູນການຈ່າຍຄ່າຮຽນ")
     return obj
+
+
+def get_registration_with_payment_context(db: Session, registration_id: str) -> Registration:
+    obj = db.query(Registration).options(
+        joinedload(Registration.student),
+        joinedload(Registration.tuition_payments),
+    ).filter(Registration.registration_id == registration_id).first()
+    if not obj:
+        raise NotFoundException("ຂໍ້ມູນການລົງທະບຽນ")
+    return obj
+
+
+def build_payment_history_report_request(
+    db: Session,
+    registration_id: str,
+) -> TuitionPaymentHistoryReportRequest:
+    registration = get_registration_with_payment_context(db, registration_id)
+    if not registration.student:
+        raise NotFoundException("ຂໍ້ມູນນັກຮຽນ")
+
+    payments = sorted(
+        registration.tuition_payments or [],
+        key=lambda item: (item.pay_date, item.tuition_payment_id),
+    )
+    final_amount = Decimal(registration.final_amount)
+    cumulative_paid_amount = Decimal("0")
+    payment_items: list[TuitionPaymentHistoryItem] = []
+
+    for installment_index, payment in enumerate(payments, start=1):
+        paid_amount = Decimal(payment.paid_amount)
+        cumulative_paid_amount += paid_amount
+        remaining_amount = max(final_amount - cumulative_paid_amount, Decimal("0"))
+        payment_method = (
+            payment.payment_method.value
+            if hasattr(payment.payment_method, "value")
+            else str(payment.payment_method)
+        )
+        payment_items.append(
+            TuitionPaymentHistoryItem(
+                installment_index=installment_index,
+                invoice_id=payment.tuition_payment_id,
+                pay_date=payment.pay_date,
+                payment_method=payment_method,
+                paid_amount=paid_amount,
+                cumulative_paid_amount=cumulative_paid_amount,
+                remaining_amount=remaining_amount,
+                status="ຈ່າຍແລ້ວ" if remaining_amount <= 0 else "ຈ່າຍບາງສ່ວນ",
+            )
+        )
+
+    total_paid_amount = cumulative_paid_amount
+    remaining_amount = max(final_amount - total_paid_amount, Decimal("0"))
+
+    return TuitionPaymentHistoryReportRequest(
+        registration_id=registration.registration_id,
+        student_id=registration.student.student_id,
+        student_name=f"{registration.student.student_name} {registration.student.student_lastname}",
+        registration_date=registration.registration_date,
+        total_fee=final_amount,
+        total_paid_amount=total_paid_amount,
+        remaining_amount=remaining_amount,
+        installment_count=len(payment_items),
+        payment_items=payment_items,
+    )
+
+
+def build_receipt_request(db: Session, tuition_payment_id: str) -> TuitionPaymentReceiptRequest:
+    payment = get_by_id(db, tuition_payment_id)
+    registration = payment.registration
+    if not registration or not registration.student:
+        raise NotFoundException("ຂໍ້ມູນການລົງທະບຽນ")
+
+    payments = db.query(TuitionPayment).filter(
+        TuitionPayment.registration_id == registration.registration_id
+    ).order_by(TuitionPayment.pay_date.asc(), TuitionPayment.tuition_payment_id.asc()).all()
+
+    payment_ids = [item.tuition_payment_id for item in payments]
+    installment_index = payment_ids.index(payment.tuition_payment_id) + 1
+    cumulative_paid_amount = sum(
+        (Decimal(item.paid_amount) for item in payments[:installment_index]),
+        Decimal('0'),
+    )
+    installment_total = len(payments)
+
+    selected_fees = []
+    subject_fee_total = Decimal('0')
+    for detail in registration.details or []:
+        fee_rel = detail.fee_rel
+        subject_detail = fee_rel.subject_detail if fee_rel else None
+        subject = subject_detail.subject if subject_detail else None
+        level = subject_detail.level if subject_detail else None
+        fee_amount = Decimal(fee_rel.fee) if fee_rel and fee_rel.fee is not None else Decimal('0')
+        subject_fee_total += fee_amount
+        selected_fees.append(
+            {
+                'subject_name': subject.subject_name if subject else '-',
+                'level_name': level.level_name if level else '-',
+                'fee': fee_amount,
+            }
+        )
+
+    total_fee = Decimal(registration.total_amount)
+    other_fee_amount = max(total_fee - subject_fee_total, Decimal('0'))
+    remaining_amount = max(Decimal(registration.final_amount) - cumulative_paid_amount, Decimal('0'))
+
+    return TuitionPaymentReceiptRequest(
+        tuition_payment_id=payment.tuition_payment_id,
+        invoice_id=payment.tuition_payment_id,
+        registration_id=registration.registration_id,
+        student_name=f'{registration.student.student_name} {registration.student.student_lastname}',
+        payment_method=payment.payment_method.value if hasattr(payment.payment_method, 'value') else str(payment.payment_method),
+        pay_date=payment.pay_date,
+        installment_index=installment_index,
+        installment_total=installment_total,
+        selected_fees=selected_fees,
+        other_fee_label='ຄ່າອື່ນໆ',
+        other_fee_amount=other_fee_amount,
+        total_fee=Decimal(registration.final_amount),
+        paid_amount=Decimal(payment.paid_amount),
+        cumulative_paid_amount=cumulative_paid_amount,
+        remaining_amount=remaining_amount,
+    )
 
 
 def create(db: Session, data: TuitionPaymentCreate):

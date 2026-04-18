@@ -2,6 +2,7 @@ from pydantic import BaseModel, field_serializer
 from typing import Optional
 from datetime import date
 from decimal import Decimal
+from app.utils.donation_category import normalize_donation_category_name
 
 
 def format_date(value):
@@ -35,21 +36,9 @@ class DonorResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class DonationCategoryCreate(BaseModel):
-    donation_category: str
-
-class DonationCategoryUpdate(BaseModel):
-    donation_category: Optional[str] = None
-
-class DonationCategoryResponse(BaseModel):
-    donation_category_id: int
-    donation_category: str
-    model_config = {"from_attributes": True}
-
-
 class DonationCreate(BaseModel):
     donor_id: str
-    donation_category_id: int
+    donation_category: str
     donation_name: str
     amount: Decimal
     unit_id: int
@@ -58,7 +47,7 @@ class DonationCreate(BaseModel):
 
 class DonationUpdate(BaseModel):
     donor_id: Optional[str] = None
-    donation_category_id: Optional[int] = None
+    donation_category: Optional[str] = None
     donation_name: Optional[str] = None
     amount: Optional[Decimal] = None
     unit_id: Optional[int] = None
@@ -70,7 +59,6 @@ class DonationResponse(BaseModel):
     donor_id: str
     donor_name: str
     donor_lastname: str
-    donation_category_id: int
     donation_category_name: str
     donation_name: str
     amount: Decimal
@@ -80,13 +68,13 @@ class DonationResponse(BaseModel):
 
     @classmethod
     def model_validate(cls, obj):
+        category_name = normalize_donation_category_name(obj.donation_category)
         return cls(
             donation_id=obj.donation_id,
             donor_id=obj.donor.donor_id,
             donor_name=obj.donor.donor_name,
             donor_lastname=obj.donor.donor_lastname,
-            donation_category_id=obj.donation_category.donation_category_id,
-            donation_category_name=obj.donation_category.donation_category,
+            donation_category_name=category_name,
             donation_name=obj.donation_name,
             amount=obj.amount,
             unit_name=obj.unit.unit_name,

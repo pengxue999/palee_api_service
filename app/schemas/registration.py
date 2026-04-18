@@ -32,6 +32,25 @@ class RegistrationBulkCreate(BaseModel):
     details: List[RegistrationDetailItem]
 
 
+class RegistrationReceiptFeeItem(BaseModel):
+    subject_name: str
+    level_name: str
+    fee: Decimal
+
+
+class RegistrationReceiptRequest(BaseModel):
+    registration_id: str
+    registration_date: datetime
+    student_name: str
+    selected_fees: List[RegistrationReceiptFeeItem]
+    tuition_fee: Decimal
+    dormitory_label: Optional[str] = None
+    dormitory_fee: Decimal
+    total_fee: Decimal
+    discount_amount: Decimal
+    net_fee: Decimal
+
+
 class RegistrationCreate(BaseModel):
     registration_id: str
     student_id: str

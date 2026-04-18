@@ -3,10 +3,11 @@ from fastapi.responses import JSONResponse
 
 
 class BaseAPIException(Exception):
-    def __init__(self, code: str, message: str, status_code: int = 400):
+    def __init__(self, code: str, message: str, status_code: int = 400, data=None):
         self.code = code
         self.message = message
         self.status_code = status_code
+        self.data = data
         super().__init__(message)
 
 
@@ -20,11 +21,12 @@ class NotFoundException(BaseAPIException):
 
 
 class ConflictException(BaseAPIException):
-    def __init__(self, message: str = "Resource already exists"):
+    def __init__(self, message: str = "Resource already exists", data=None):
         super().__init__(
             code="CONFLICT",
             message=message,
-            status_code=409
+            status_code=409,
+            data=data,
         )
 
 
@@ -61,6 +63,6 @@ async def api_exception_handler(request: Request, exc: BaseAPIException):
         content={
             "code": exc.code,
             "messages": exc.message,
-            "data": None,
+            "data": exc.data,
         },
     )

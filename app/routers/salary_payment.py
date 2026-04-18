@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
@@ -6,6 +6,7 @@ from app.configs.database import get_db
 from app.schemas.salary_payment import SalaryPaymentCreate, SalaryPaymentUpdate, SalaryPaymentResponse
 from app.configs.response import success_response
 from app.services import salary_payment as svc
+from app.services import receipt_pdf as receipt_pdf_svc
 
 router = APIRouter(prefix="/salary-payments", tags=["ການຈ່າຍເງິນເດືອນ"])
 
@@ -91,6 +92,20 @@ def get_one(payment_id: str, db: Session = Depends(get_db)):
     return success_response(
         SalaryPaymentResponse.model_validate(svc.get_by_id(db, payment_id)),
         "ດຶງຂໍ້ມູນການຈ່າຍເງິນເດືອນສຳເລັດ"
+    )
+
+
+@router.get("/{payment_id}/receipt-pdf")
+def get_receipt_pdf(payment_id: str, db: Session = Depends(get_db)):
+    receipt_data = svc.build_receipt_request(db, payment_id)
+    pdf_bytes = receipt_pdf_svc.build_salary_payment_receipt_pdf(receipt_data)
+    filename = f'salary_payment_{payment_id}.pdf'
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 

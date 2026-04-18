@@ -16,4 +16,3 @@ class AcademicYear(Base):
     fees = relationship("Fee", back_populates="academic_year")
     discounts = relationship("Discount", back_populates="academic_year")
     teacher_assignments = relationship("TeacherAssignment", back_populates="academic_year")
-    evaluations = relationship("Evaluation", back_populates="academic_year")

@@ -5,7 +5,7 @@
 
 CREATE DATABASE IF NOT EXISTS palee_elite_training_center
   DEFAULT CHARACTER SET utf8mb4
-  COLLATE utf8mb4_0900_ai_ci;
+  COLLATE utf8mb4_general_ci;
 
 USE palee_elite_training_center;
 
@@ -253,7 +253,7 @@ CREATE TABLE registration (
   registration_date TIMESTAMP      NOT NULL,
   PRIMARY KEY (registration_id),
   FOREIGN KEY (student_id)  REFERENCES student  (student_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
+    ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (discount_id) REFERENCES discount (discount_id)
     ON DELETE SET NULL ON UPDATE CASCADE  -- ⚠️ SET NULL: ລຶບສ່ວນລຸດໄດ້ໂດຍບໍ່ກະທົບ registration
 ) ENGINE = InnoDB;
@@ -269,7 +269,7 @@ CREATE TABLE registration_detail (
   PRIMARY KEY (regis_detail_id),
   UNIQUE KEY uq_registration_fee (registration_id, fee_id),
   FOREIGN KEY (registration_id) REFERENCES registration (registration_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
+    ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (fee_id)          REFERENCES fee          (fee_id)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE = InnoDB;
@@ -285,7 +285,7 @@ CREATE TABLE tuition_payment (
   pay_date           TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (tuition_payment_id),
   FOREIGN KEY (registration_id) REFERENCES registration (registration_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE
+    ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB;
 
 -- -----------------------------------------------------
@@ -293,45 +293,25 @@ CREATE TABLE tuition_payment (
 -- -----------------------------------------------------
 CREATE TABLE evaluation (
   evaluation_id   VARCHAR(20) NOT NULL,
-  academic_id     char(5)     NOT NULL,
-  semester        ENUM('Semester 1', 'Semester 2') NOT NULL,
-  evaluation_date DATE        NOT NULL,
-  PRIMARY KEY (evaluation_id),
-  UNIQUE KEY uq_evaluation (academic_id, semester),
-  FOREIGN KEY (academic_id) REFERENCES academic_years (academic_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- 21. ວິຊາທີ່ຢູ່ໃນການປະເມີນ
--- -----------------------------------------------------
-CREATE TABLE evaluation_subject (
-  eval_subject_id   INT(11)     NOT NULL AUTO_INCREMENT,
-  evaluation_id     VARCHAR(20) NOT NULL,
-  subject_detail_id CHAR(5)     NOT NULL,
-  PRIMARY KEY (eval_subject_id),
-  UNIQUE KEY uq_eval_subject (evaluation_id, subject_detail_id),
-  FOREIGN KEY (evaluation_id)     REFERENCES evaluation     (evaluation_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  FOREIGN KEY (subject_detail_id) REFERENCES subject_detail (subject_detail_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE = InnoDB;
+  semester        ENUM('ກາງພາກ', 'ທ້າຍພາກ') NOT NULL,
+  evaluation_date TIMESTAMP    NOT NULL,
+  PRIMARY KEY (evaluation_id)
+ ) ENGINE = InnoDB;
 
 -- -----------------------------------------------------
 -- 22. ລາຍລະອຽດການປະເມີນ
 -- -----------------------------------------------------
 CREATE TABLE evaluation_detail (
   eval_detail_id  INT(11)      NOT NULL AUTO_INCREMENT,
-  eval_subject_id INT(11)      NOT NULL,
-  student_id      CHAR(10)     NOT NULL,
+  evaluation_id   VARCHAR(20) NOT NULL,
+  regis_detail_id INT(11)     NOT NULL,
   score           DECIMAL(5,2) NOT NULL,
-  ranking         VARCHAR(10)  NOT NULL,
-  prize           VARCHAR(100) DEFAULT NULL,
+  ranking         INT(11)  NOT NULL,
+  prize           DECIMAL(10,2)DEFAULT NULL,
   PRIMARY KEY (eval_detail_id),
-  UNIQUE KEY uq_eval_student (eval_subject_id, student_id),
-  FOREIGN KEY (eval_subject_id) REFERENCES evaluation_subject (eval_subject_id)
+  FOREIGN KEY (evaluation_id) REFERENCES evaluation (evaluation_id)
     ON DELETE RESTRICT ON UPDATE CASCADE,
-  FOREIGN KEY (student_id)      REFERENCES student            (student_id)
+  FOREIGN KEY (regis_detail_id) REFERENCES registration_detail (regis_detail_id)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE = InnoDB;
 
@@ -392,17 +372,7 @@ CREATE TABLE donor (
 ) ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- 27. ປະເພດການບໍລິຈາກ
--- -----------------------------------------------------
-CREATE TABLE donation_category (
-  donation_category_id INT(11)     NOT NULL AUTO_INCREMENT,
-  donation_category    VARCHAR(30) NOT NULL,
-  PRIMARY KEY (donation_category_id),
-  UNIQUE KEY uq_donation_category (donation_category)
-) ENGINE = InnoDB;
-
--- -----------------------------------------------------
--- 28. ຫົວໜ່ວຍ
+-- 27. ຫົວໜ່ວຍ
 -- -----------------------------------------------------
 CREATE TABLE unit (
   unit_id   INT(11)     NOT NULL AUTO_INCREMENT,
@@ -412,12 +382,12 @@ CREATE TABLE unit (
 ) ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- 29. ການບໍລິຈາກ
+-- 28. ການບໍລິຈາກ
 -- -----------------------------------------------------
 CREATE TABLE donation (
   donation_id          INT(11)        NOT NULL AUTO_INCREMENT,
   donor_id             CHAR(5)        NOT NULL,
-  donation_category_id INT(11)        NOT NULL,
+  donation_category    VARCHAR(30)    NOT NULL,
   donation_name        VARCHAR(30)    NOT NULL,
   amount               DECIMAL(10, 2) NOT NULL,
   unit_id              INT(11)        NOT NULL,
@@ -426,10 +396,13 @@ CREATE TABLE donation (
   PRIMARY KEY (donation_id),
   FOREIGN KEY (donor_id)             REFERENCES donor             (donor_id)
     ON DELETE RESTRICT ON UPDATE CASCADE,
-  FOREIGN KEY (donation_category_id) REFERENCES donation_category (donation_category_id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
   FOREIGN KEY (unit_id)              REFERENCES unit              (unit_id)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE = InnoDB;
+
+ALTER TABLE income
+  ADD CONSTRAINT fk_income_donation
+  FOREIGN KEY (donation_id) REFERENCES donation (donation_id)
+    ON DELETE CASCADE ON UPDATE CASCADE;
 
 SET FOREIGN_KEY_CHECKS = 1;

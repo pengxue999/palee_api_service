@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Date, ForeignKey, Enum,CHAR
+from sqlalchemy import Column, String, Date, Enum
 from sqlalchemy.orm import relationship
 from app.configs.database import Base
 from app.enums.semester import SemesterEnum
@@ -7,10 +7,13 @@ from app.enums.semester import SemesterEnum
 class Evaluation(Base):
     __tablename__ = "evaluation"
 
+    _semester_enum = Enum(
+        SemesterEnum,
+        values_callable=lambda items: [item.value for item in items],
+    )
+
     evaluation_id = Column(String(20), primary_key=True)
-    academic_id = Column(CHAR(5), ForeignKey("academic_years.academic_id"), nullable=False)
-    semester = Column(Enum(SemesterEnum), nullable=False)
+    semester = Column(_semester_enum, nullable=False)
     evaluation_date = Column(Date, nullable=False)
 
-    academic_year = relationship("AcademicYear", back_populates="evaluations")
-    evaluation_subjects = relationship("EvaluationSubject", back_populates="evaluation")
+    evaluation_details = relationship("EvaluationDetail", back_populates="evaluation")

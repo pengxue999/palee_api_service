@@ -27,13 +27,11 @@ from app.routers import (
     registration_detail,
     tuition_payment,
     evaluation,
-    evaluation_subject,
     evaluation_detail,
     expense_category,
     expense,
     income,
     donor,
-    donation_category,
     unit,
     donation,
     dashboard,
@@ -110,13 +108,11 @@ app.include_router(registration.router)
 app.include_router(registration_detail.router)
 app.include_router(tuition_payment.router)
 app.include_router(evaluation.router)
-app.include_router(evaluation_subject.router)
 app.include_router(evaluation_detail.router)
 app.include_router(expense_category.router)
 app.include_router(expense.router)
 app.include_router(income.router)
 app.include_router(donor.router)
-app.include_router(donation_category.router)
 app.include_router(unit.router)
 app.include_router(donation.router)
 app.include_router(dashboard.router)

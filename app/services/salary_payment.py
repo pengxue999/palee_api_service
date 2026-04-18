@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract, and_
 from datetime import datetime, date
+from decimal import Decimal
 import calendar
 import re
 from app.models.salary_payment import SalaryPayment
@@ -9,11 +10,29 @@ from app.models.teacher_assignment import TeacherAssignment
 from app.models.teacher import Teacher
 from app.models.expense import Expense
 from app.models.expense_category import ExpenseCategory
-from app.schemas.salary_payment import SalaryPaymentCreate, SalaryPaymentUpdate
+from app.schemas.salary_payment import (
+    SalaryPaymentCreate,
+    SalaryPaymentUpdate,
+    SalaryPaymentReceiptRequest,
+)
 from app.configs.exceptions import NotFoundException
 
 
 SALARY_CATEGORY_NAME = 'ຄ່າສອນ'
+MONTH_NAMES = {
+    1: 'ມັງກອນ',
+    2: 'ກຸມພາ',
+    3: 'ມີນາ',
+    4: 'ເມສາ',
+    5: 'ພຶດສະພາ',
+    6: 'ມິຖຸນາ',
+    7: 'ກໍລະກົດ',
+    8: 'ສິງຫາ',
+    9: 'ກັນຍາ',
+    10: 'ຕຸລາ',
+    11: 'ພະຈິກ',
+    12: 'ທັນວາ',
+}
 
 
 def _get_or_create_salary_category(db: Session) -> int:
@@ -29,6 +48,10 @@ def _get_or_create_salary_category(db: Session) -> int:
     db.add(new_category)
     db.flush()
     return new_category.expense_category_id
+
+
+def _month_label(month: int) -> str:
+    return MONTH_NAMES.get(month, str(month))
 
 
 def generate_salary_payment_id(db: Session) -> str:
@@ -274,6 +297,65 @@ def get_payment_summary_by_teacher(db: Session, teacher_id: str, year: int, mont
         'remaining_balance': data['remaining_balance'],
         'is_fully_paid': data['remaining_balance'] <= 0,
     }
+
+
+def build_receipt_request(db: Session, salary_payment_id: str) -> SalaryPaymentReceiptRequest:
+    payment = get_by_id(db, salary_payment_id)
+    year = payment.payment_date.year
+    month = payment.month
+
+    payments = db.query(SalaryPayment).filter(
+        SalaryPayment.teacher_id == payment.teacher_id,
+        extract('year', SalaryPayment.payment_date) == year,
+        SalaryPayment.month == month,
+    ).order_by(SalaryPayment.payment_date.asc(), SalaryPayment.salary_payment_id.asc()).all()
+
+    payment_ids = [item.salary_payment_id for item in payments]
+    installment_index = payment_ids.index(payment.salary_payment_id) + 1
+    cumulative_paid_amount = sum(
+        (Decimal(item.total_amount) for item in payments[:installment_index]),
+        Decimal('0'),
+    )
+    outstanding_before_payment = sum(
+        (Decimal(item.total_amount) for item in payments[:installment_index - 1]),
+        Decimal('0'),
+    )
+
+    calculation = calculate_teacher_salary(db, payment.teacher_id, year, month)
+    expected_amount = Decimal(str(calculation['total_amount']))
+    prior_debt = Decimal(str(calculation['prior_debt']))
+    due_before_payment = max(
+        expected_amount + prior_debt - outstanding_before_payment,
+        Decimal('0'),
+    )
+    remaining_amount = max(
+        expected_amount + prior_debt - cumulative_paid_amount,
+        Decimal('0'),
+    )
+    teacher_name = f"{payment.teacher.teacher_name} {payment.teacher.teacher_lastname}".strip()
+
+    return SalaryPaymentReceiptRequest(
+        salary_payment_id=payment.salary_payment_id,
+        invoice_id=payment.salary_payment_id,
+        teacher_id=payment.teacher_id,
+        teacher_name=teacher_name or payment.teacher_id,
+        user_name=payment.user.user_name if payment.user else '-',
+        pay_date=payment.payment_date,
+        month=month,
+        month_label=_month_label(month),
+        year=year,
+        installment_index=installment_index,
+        installment_total=len(payments),
+        total_hours=float(calculation['total_hours']),
+        hourly_rate=Decimal(str(calculation['hourly_rate'])),
+        expected_amount=expected_amount,
+        prior_debt=prior_debt,
+        outstanding_before_payment=due_before_payment,
+        paid_amount=Decimal(payment.total_amount),
+        cumulative_paid_amount=cumulative_paid_amount,
+        remaining_amount=remaining_amount,
+        status='ຈ່າຍແລ້ວ' if remaining_amount <= 0 else payment.status,
+    )
 
 
 def create(db: Session, data: SalaryPaymentCreate):

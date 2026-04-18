@@ -8,8 +8,8 @@ class Registration(Base):
     __tablename__ = "registration"
 
     registration_id = Column(String(20), primary_key=True)
-    student_id = Column(CHAR(10), ForeignKey("student.student_id"), nullable=False)
-    discount_id = Column(CHAR(5), ForeignKey("discount.discount_id"), nullable=True)
+    student_id = Column(CHAR(10), ForeignKey("student.student_id", ondelete="CASCADE"), nullable=False)
+    discount_id = Column(CHAR(5), ForeignKey("discount.discount_id", ondelete="SET NULL"), nullable=True)
     total_amount = Column(DECIMAL(10, 2), nullable=False)
     final_amount = Column(DECIMAL(10, 2), nullable=False)
     status = Column(Enum(RegistrationStatusEnum, values_callable=lambda e: [x.value for x in e]), nullable=False)
@@ -17,5 +17,5 @@ class Registration(Base):
 
     student = relationship("Student", back_populates="registrations")
     discount = relationship("Discount", back_populates="registrations")
-    details = relationship("RegistrationDetail", back_populates="registration")
-    tuition_payments = relationship("TuitionPayment", back_populates="registration")
+    details = relationship("RegistrationDetail", back_populates="registration", passive_deletes=True)
+    tuition_payments = relationship("TuitionPayment", back_populates="registration", passive_deletes=True)

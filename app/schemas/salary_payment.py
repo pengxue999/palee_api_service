@@ -62,3 +62,30 @@ class SalaryPaymentResponse(BaseModel):
     @field_serializer('payment_date')
     def serialize_datetime(self, value):
         return format_datetime(value)
+
+
+class SalaryPaymentReceiptRequest(BaseModel):
+    salary_payment_id: str
+    invoice_id: str
+    teacher_id: str
+    teacher_name: str
+    user_name: str
+    pay_date: datetime
+    month: int
+    month_label: str
+    year: int
+    installment_index: int
+    installment_total: int
+    total_hours: float
+    hourly_rate: Decimal
+    expected_amount: Decimal
+    prior_debt: Decimal = Decimal('0')
+    outstanding_before_payment: Decimal
+    paid_amount: Decimal
+    cumulative_paid_amount: Decimal
+    remaining_amount: Decimal
+    status: str
+
+    @field_serializer('pay_date')
+    def serialize_pay_date(self, value):
+        return format_datetime(value)

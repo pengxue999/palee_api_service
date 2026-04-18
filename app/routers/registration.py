@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from decimal import Decimal
 from app.configs.database import get_db
 from app.schemas.registration import (
-    RegistrationCreate, RegistrationUpdate, RegistrationResponse, RegistrationBulkCreate
+    RegistrationCreate,
+    RegistrationUpdate,
+    RegistrationResponse,
+    RegistrationBulkCreate,
+    RegistrationReceiptRequest,
 )
 from app.configs.response import success_response
 from app.services import registration as svc
+from app.services import receipt_pdf as receipt_pdf_svc
 
 router = APIRouter(prefix="/registrations", tags=["ການລົງທະບຽນ"])
 
@@ -49,6 +54,19 @@ def create_bulk_registration(data: RegistrationBulkCreate, db: Session = Depends
     return success_response(
         RegistrationResponse.model_validate(item, paid_amount=_calc_paid(item)),
         "ບັນທຶກການລົງທະບຽນ ແລະ ລາຍລະອຽດສຳເລັດ", 201
+    )
+
+
+@router.post("/receipt-pdf")
+def create_registration_receipt_pdf(data: RegistrationReceiptRequest):
+    pdf_bytes = receipt_pdf_svc.build_registration_receipt_pdf(data)
+    filename = f'registration_{data.registration_id}.pdf'
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 

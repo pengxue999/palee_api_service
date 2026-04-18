@@ -1,9 +1,9 @@
-from sqlalchemy import func
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 import time
 from app.models.student import Student
 from app.models.dormitory import Dormitory
-from app.schemas.student import StudentCreate, StudentUpdate
+from app.schemas.student import StudentCreate, StudentResponse, StudentUpdate
 from app.configs.exceptions import NotFoundException, ConflictException
 from app.utils.foreign_key_helper import safe_delete_with_constraint_check
 
@@ -39,20 +39,51 @@ def _generate_student_id(db: Session) -> str:
             raise
 
 
-def _get_dormitory_by_gender(db: Session, gender: str) -> Dormitory:
+def _get_dormitory_by_gender(db: Session, gender: str, lock_row: bool = False) -> Dormitory:
     """ດຶງຂໍ້ມູນຫໍພັກຕາມເພດ"""
-    dormitory = db.query(Dormitory).filter(Dormitory.gender == gender).first()
+    query = db.query(Dormitory).filter(Dormitory.gender == gender)
+    if lock_row:
+        query = query.with_for_update()
+    dormitory = query.first()
     if not dormitory:
         raise NotFoundException(f"ບໍ່ພົບຂໍ້ມູນຫໍພັກສຳລັບ{gender}")
     return dormitory
 
 
-def _check_dormitory_capacity(db: Session, gender: str) -> int:
+def _normalize_text(value: str) -> str:
+    return " ".join(value.split())
+
+
+def _check_duplicate_student(db: Session, data: StudentCreate):
+    normalized_name = _normalize_text(data.student_name)
+    normalized_lastname = _normalize_text(data.student_lastname)
+
+    duplicate = db.query(Student).filter(
+        and_(
+            Student.student_contact == data.student_contact,
+            func.trim(Student.student_name) == normalized_name,
+            func.trim(Student.student_lastname) == normalized_lastname,
+            # Student.parents_contact == data.parents_contact,
+        )
+    ).first()
+
+    if not duplicate:
+        return
+
+    duplicate_payload = StudentResponse.model_validate(duplicate).model_dump()
+
+    raise ConflictException(
+        message="ຂໍ້ມູນນັກຮຽນນີ້ມີຢູ່ໃນລະບົບແລ້ວ",
+        data=duplicate_payload,
+    )
+
+
+def _check_dormitory_capacity(db: Session, gender: str, lock_row: bool = False) -> int:
     """
     ກວດສອບວ່າຫໍພັກຍັງວ່າງຢູ່ບໍ່
     Returns: dormitory_id ຖ້າວ່າງ, ຖ້າເຕັມ throw ConflictException
     """
-    dormitory = _get_dormitory_by_gender(db, gender)
+    dormitory = _get_dormitory_by_gender(db, gender, lock_row=lock_row)
 
     current_count = db.query(Student).filter(
         Student.dormitory_id == dormitory.dormitory_id
@@ -78,38 +109,17 @@ def get_by_id(db: Session, student_id: str):
 
 
 def create(db: Session, data: StudentCreate):
-    """
-    ສ້າງໂຣຟາຍນັກຮຽນໃໝ່ ກັບ concurrency protection
-    - Student ID ຖືກສ້າງຕາມລຳດັບໂດຍ row locking
-    - Dormitory capacity ຖືກກວດກາ ແລະ ອັບເດດພາຍໃນ transaction ດຽວ
-    """
     max_retries = 3
     last_error = None
 
     for attempt in range(max_retries):
         try:
+            _check_duplicate_student(db, data)
+
             # ກວດສອບ dormitory ຖ້າຕ້ອງການ
             dormitory_id = None
             if data.dormitory_type == "ຫໍພັກໃນ":
-                # Lock dormitory row ບໍ່ໃຫ້ໂຕອື່ນດັດແປງພາຍໃນ transaction
-                dormitory = db.query(Dormitory).filter(
-                    Dormitory.gender == data.gender
-                ).with_for_update().first()
-
-                if not dormitory:
-                    raise NotFoundException(
-                        f"ບໍ່ພົບຂໍ້ມູນຫໍພັກສຳລັບ{data.gender}"
-                    )
-
-                current_count = db.query(Student).filter(
-                    Student.dormitory_id == dormitory.dormitory_id
-                ).count()
-
-                if current_count >= dormitory.max_capacity:
-                    raise ConflictException(
-                        message=f"ຫໍພັກ{data.gender}ເຕັມແລ້ວ (ຈຳກັດ {dormitory.max_capacity} ຄົນ, ມີນັກຮຽນ {current_count} ຄົນ)"
-                    )
-                dormitory_id = dormitory.dormitory_id
+                dormitory_id = _check_dormitory_capacity(db, data.gender, lock_row=True)
 
             # ສ້າງ student ID (ມີລັອກພາຍໃນ transaction)
             student_id = _generate_student_id(db)
@@ -172,41 +182,19 @@ def update(db: Session, student_id: str, data: StudentUpdate):
                 if data.dormitory_type == "ຫໍພັກໃນ":
                     new_gender = data.gender if data.gender is not None else current_gender
 
-                    # ກວດ dormitory capacity ພາຍໃນ transaction
-                    dormitory = db.query(Dormitory).filter(
-                        Dormitory.gender == new_gender
-                    ).with_for_update().first()
-
-                    if not dormitory:
-                        raise NotFoundException(
-                            f"ບໍ່ພົບຂໍ້ມູນຫໍພັກສຳລັບ{new_gender}"
-                        )
-
                     if current_dormitory_id is None:
-                        current_count = db.query(Student).filter(
-                            Student.dormitory_id == dormitory.dormitory_id
-                        ).count()
-
-                        if current_count >= dormitory.max_capacity:
-                            raise ConflictException(
-                                message=f"ຫໍພັກ{new_gender}ເຕັມແລ້ວ"
-                            )
-                        dormitory_id = dormitory.dormitory_id
+                        dormitory_id = _check_dormitory_capacity(
+                            db, new_gender, lock_row=True
+                        )
                     else:
                         current_dorm = db.query(Dormitory).filter(
                             Dormitory.dormitory_id == current_dormitory_id
                         ).first()
 
                         if current_dorm and current_dorm.gender != new_gender:
-                            current_count = db.query(Student).filter(
-                                Student.dormitory_id == dormitory.dormitory_id
-                            ).count()
-
-                            if current_count >= dormitory.max_capacity:
-                                raise ConflictException(
-                                    message=f"ຫໍພັກ{new_gender}ເຕັມແລ້ວ"
-                                )
-                            dormitory_id = dormitory.dormitory_id
+                            dormitory_id = _check_dormitory_capacity(
+                                db, new_gender, lock_row=True
+                            )
                         else:
                             dormitory_id = current_dormitory_id
 

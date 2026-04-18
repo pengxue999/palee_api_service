@@ -17,7 +17,16 @@ DATABASE_URL = (
     "?charset=utf8mb4"
 )
 
-engine = create_engine(DATABASE_URL, echo=False)
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    connect_args={
+        "ssl": {
+            "ca": os.getenv("DB_SSL_CA"),
+        }
+    },
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

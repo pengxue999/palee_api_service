@@ -57,3 +57,50 @@ class TuitionPaymentResponse(BaseModel):
     @field_serializer('pay_date')
     def serialize_pay_date(self, value):
         return format_date(value)
+
+
+class TuitionPaymentReceiptFeeItem(BaseModel):
+    subject_name: str
+    level_name: str
+    fee: Decimal
+
+
+class TuitionPaymentReceiptRequest(BaseModel):
+    tuition_payment_id: str
+    invoice_id: str
+    registration_id: str
+    student_name: str
+    payment_method: str
+    pay_date: datetime
+    installment_index: int
+    installment_total: int
+    selected_fees: list[TuitionPaymentReceiptFeeItem]
+    other_fee_label: Optional[str] = None
+    other_fee_amount: Decimal = Decimal('0')
+    total_fee: Decimal
+    paid_amount: Decimal
+    cumulative_paid_amount: Decimal
+    remaining_amount: Decimal
+
+
+class TuitionPaymentHistoryItem(BaseModel):
+    installment_index: int
+    invoice_id: str
+    pay_date: datetime
+    payment_method: str
+    paid_amount: Decimal
+    cumulative_paid_amount: Decimal
+    remaining_amount: Decimal
+    status: str
+
+
+class TuitionPaymentHistoryReportRequest(BaseModel):
+    registration_id: str
+    student_id: Optional[str] = None
+    student_name: str
+    registration_date: datetime
+    total_fee: Decimal
+    total_paid_amount: Decimal
+    remaining_amount: Decimal
+    installment_count: int
+    payment_items: list[TuitionPaymentHistoryItem]

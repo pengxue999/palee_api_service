@@ -7,11 +7,11 @@ class EvaluationDetail(Base):
     __tablename__ = "evaluation_detail"
 
     eval_detail_id = Column(Integer, primary_key=True, autoincrement=True)
-    eval_subject_id = Column(Integer, ForeignKey("evaluation_subject.eval_subject_id"), nullable=False)
-    student_id = Column(String(10), ForeignKey("student.student_id"), nullable=False)
+    evaluation_id = Column(String(20), ForeignKey("evaluation.evaluation_id"), nullable=False)
+    regis_detail_id = Column(Integer, ForeignKey("registration_detail.regis_detail_id", ondelete="CASCADE"), nullable=False)
     score = Column(DECIMAL(5, 2), nullable=False)
-    ranking = Column(String(10), nullable=False)
-    prize = Column(String(100), nullable=True)
+    ranking = Column(Integer, nullable=False, default=0)
+    prize = Column(DECIMAL(10, 2), nullable=True)
 
-    evaluation_subject = relationship("EvaluationSubject", back_populates="evaluation_details")
-    student = relationship("Student", back_populates="evaluation_details")
+    evaluation = relationship("Evaluation", back_populates="evaluation_details")
+    registration_detail = relationship("RegistrationDetail", back_populates="evaluation_details")

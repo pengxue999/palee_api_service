@@ -8,7 +8,7 @@ class TuitionPayment(Base):
     __tablename__ = "tuition_payment"
 
     tuition_payment_id = Column(String(20), primary_key=True)
-    registration_id = Column(String(20), ForeignKey("registration.registration_id"), nullable=False)
+    registration_id = Column(String(20), ForeignKey("registration.registration_id", ondelete="CASCADE"), nullable=False)
     paid_amount = Column(DECIMAL(10, 2), nullable=False)
     payment_method = Column(
         Enum(PaymentMethodEnum, values_callable=lambda e: [x.value for x in e]),

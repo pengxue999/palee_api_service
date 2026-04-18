@@ -14,4 +14,3 @@ class SubjectDetail(Base):
     level = relationship("Level", back_populates="subject_details")
     fees = relationship("Fee", back_populates="subject_detail")
     assignments = relationship("TeacherAssignment", back_populates="subject_detail")
-    evaluation_subjects = relationship("EvaluationSubject", back_populates="subject_detail")
