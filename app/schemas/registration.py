@@ -41,7 +41,6 @@ class RegistrationReceiptFeeItem(BaseModel):
 class RegistrationReceiptRequest(BaseModel):
     registration_id: str
     registration_date: datetime
-    student_id: Optional[str] = None
     student_name: str
     selected_fees: List[RegistrationReceiptFeeItem]
     tuition_fee: Decimal

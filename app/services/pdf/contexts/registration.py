@@ -10,7 +10,6 @@ def build_registration_context(data: RegistrationReceiptRequest) -> dict[str, ob
         "font_bold_url": bold_font_url,
         "registration_id": data.registration_id,
         "registration_date": format_date(data.registration_date),
-        "student_id": data.student_id,
         "student_name": data.student_name,
         "selected_fees": [
             {
