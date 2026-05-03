@@ -31,7 +31,6 @@
         --success: #15803d;
         --page-width: 210mm;
         --page-height: 297mm;
-        --receipt-height: 146mm;
         --pad-x: 12mm;
         --pad-top: 6.5mm;
       }
@@ -58,89 +57,17 @@
         padding: 0;
       }
 
-      /* ── Sheet wrapper (full A4) ─────────────────────── */
       .sheet {
         width: var(--page-width);
         height: var(--page-height);
-        display: flex;
-        flex-direction: column;
       }
 
-      /* ── Individual receipt half ─────────────────────── */
       .receipt {
         width: var(--page-width);
-        height: var(--receipt-height);
-        flex-shrink: 0;
+        min-height: var(--page-height);
         position: relative;
         overflow: hidden;
         padding-top: var(--pad-top);
-      }
-
-      /* ── Tear / cut strip ────────────────────────────── */
-      .tear-strip {
-        flex-shrink: 0;
-        width: 100%;
-        height: 5mm;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: visible;
-      }
-
-      .tear-strip::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        border-top: 1.5px dashed #aaaaaa;
-      }
-
-      .tear-circle {
-        position: absolute;
-        top: 50%;
-        width: 5mm;
-        height: 5mm;
-        border-radius: 50%;
-        background: #ffffff;
-        border: 1.2px solid #aaaaaa;
-        z-index: 2;
-      }
-
-      .tear-circle.left {
-        left: 0;
-        transform: translate(-50%, -50%);
-      }
-
-      .tear-circle.right {
-        right: 0;
-        transform: translate(50%, -50%);
-      }
-
-      .tear-label {
-        background: #ffffff;
-        padding: 0 10px;
-        font-size: 8px;
-        color: #888888;
-        font-family: "ReceiptLao", sans-serif;
-        position: relative;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        letter-spacing: 0.3px;
-      }
-
-      .tear-scissors {
-        display: inline-block;
-        font-size: 11px;
-        line-height: 1;
-      }
-
-      .tear-scissors.flip {
-        transform: scaleX(-1);
       }
 
       /* ── Header ──────────────────────────────────────── */
@@ -457,7 +384,6 @@
   </head>
   <body>
     <div class="sheet">
-      <!-- ════════════════ COPY 1 : ສຳລັບນັກຮຽນ ════════════════ -->
       <div class="receipt">
         <div class="header">
           <div>
@@ -474,117 +400,6 @@
 
         <div class="title-row">
           <div class="title">ໃບລົງທະບຽນ</div>
-          <span class="copy-badge student">ສຳລັບນັກຮຽນ</span>
-        </div>
-
-        <div class="info">
-          <div class="info-row">
-            <span class="info-label">ລະຫັດໃບລົງທະບຽນ:</span>
-            <span class="info-value">{{ registration_id }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">ຊື່ ແລະ ນາມສະກຸນ:</span>
-            <span class="info-value">{{ student_name }}</span>
-          </div>
-        </div>
-
-        <div class="section-rule"></div>
-
-        <div class="table-wrap">
-          <table>
-            <colgroup>
-              <col style="width: 46%" />
-              <col style="width: 18%" />
-              <col style="width: 36%" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>ລາຍວິຊາ</th>
-                <th>ຊັ້ນຮຽນ/ລະດັບ</th>
-                <th>ຄ່າຮຽນ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in selected_fees %}
-              <tr>
-                <td>{{ item.subject_name }}</td>
-                <td>{{ item.level_name }}</td>
-                <td>{{ item.fee }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="summary">
-          <div class="summary-row">
-            <div class="summary-label">ຄ່າຮຽນລວມ:</div>
-            <div class="summary-value">{{ tuition_fee }}</div>
-          </div>
-          {% if has_mandatory_fee %}
-          <div class="summary-row">
-            <div class="summary-label">{{ mandatory_label }}:</div>
-            <div class="summary-value">{{ mandatory_fee }}</div>
-          </div>
-          {% endif %} {% if has_discount %}
-          <div class="summary-row discount">
-            <div class="summary-label">ສ່ວນຫຼຸດ:</div>
-            <div class="summary-value">- {{ discount_amount }}</div>
-          </div>
-          {% endif %} {% if has_dormitory_fee %}
-          <div class="summary-row">
-            <div class="summary-label">{{ dormitory_label }}:</div>
-            <div class="summary-value">{{ dormitory_fee }}</div>
-          </div>
-          {% endif %}
-          <div class="summary-divider"></div>
-          <div class="summary-total">
-            <div class="summary-total-label">ຕ້ອງຈ່າຍ:</div>
-            <div class="summary-total-value">{{ net_fee }}</div>
-          </div>
-        </div>
-
-        <div class="footer">
-          <div class="footer-line"></div>
-          <div class="footer-meta">
-            <div class="footer-text">
-              <p class="lo">ຂໍໃຫ້ທ່ານ ຈົ່ງໂຊກດີ</p>
-              <p class="en">Good luck with your studies!</p>
-            </div>
-            <div class="footer-id">#{{ registration_id }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ════════════════ TEAR / CUT LINE ════════════════════ -->
-      <div class="tear-strip">
-        <div class="tear-circle left"></div>
-        <div class="tear-label">
-          <span class="tear-scissors flip">✂</span>
-          ຕັດຕາມເສັ້ນ
-          <span class="tear-scissors">✂</span>
-        </div>
-        <div class="tear-circle right"></div>
-      </div>
-
-      <!-- ════════════════ COPY 2 : ສຳລັບສູນ ═══════════════════ -->
-      <div class="receipt">
-        <div class="header">
-          <div>
-            <p class="brand-title">ສູນປາລີ ບຳລຸງນັກຮຽນເກັ່ງ</p>
-            <p class="brand-subtitle">Palee Elite Training Center</p>
-          </div>
-          <div class="date-box">
-            <p class="date-label">ວັນທີ</p>
-            <p class="date-value">{{ registration_date }}</p>
-          </div>
-        </div>
-
-        <div class="full-rule"></div>
-
-        <div class="title-row">
-          <div class="title">ໃບລົງທະບຽນ</div>
-          <span class="copy-badge center">ສຳລັບສູນ</span>
         </div>
 
         <div class="info">
