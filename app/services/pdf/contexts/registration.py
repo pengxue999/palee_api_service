@@ -1,16 +1,20 @@
 from app.schemas.registration import RegistrationReceiptRequest
 from app.services.pdf.assets import font_data_urls
 from app.services.pdf.formatters import format_currency, format_date
+from app.services.pdf.qr import build_qr_code_data_url
 
 
 def build_registration_context(data: RegistrationReceiptRequest) -> dict[str, object]:
     regular_font_url, bold_font_url = font_data_urls()
+    qr_code_data_url = build_qr_code_data_url(data.receipt_url)
     return {
         "font_regular_url": regular_font_url,
         "font_bold_url": bold_font_url,
         "registration_id": data.registration_id,
         "registration_date": format_date(data.registration_date),
         "student_name": data.student_name,
+        "receipt_url": data.receipt_url,
+        "qr_code_data_url": qr_code_data_url,
         "selected_fees": [
             {
                 "subject_name": item.subject_name,
