@@ -42,7 +42,6 @@ class RegistrationReceiptRequest(BaseModel):
     registration_id: str
     registration_date: datetime
     student_name: str
-    receipt_url: Optional[str] = None
     selected_fees: List[RegistrationReceiptFeeItem]
     tuition_fee: Decimal
     mandatory_label: Optional[str] = None

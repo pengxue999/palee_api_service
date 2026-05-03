@@ -1,6 +1,4 @@
-import os
-
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from decimal import Decimal
 from app.configs.database import get_db
@@ -16,16 +14,10 @@ from app.services import registration as svc
 from app.services import receipt_pdf as receipt_pdf_svc
 
 router = APIRouter(prefix="/registrations", tags=["ການລົງທະບຽນ"])
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 
 
 def _calc_paid(obj) -> Decimal:
     return sum((tp.paid_amount for tp in (obj.tuition_payments or [])), Decimal('0'))
-
-
-def _build_receipt_url(request: Request, registration_id: str) -> str:
-    base_url = PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
-    return f"{base_url}/registrations/{registration_id}/receipt-pdf"
 
 
 @router.get("")
@@ -66,32 +58,9 @@ def create_bulk_registration(data: RegistrationBulkCreate, db: Session = Depends
 
 
 @router.post("/receipt-pdf")
-def create_registration_receipt_pdf(data: RegistrationReceiptRequest, request: Request):
-    payload = data if data.receipt_url else data.model_copy(
-        update={"receipt_url": _build_receipt_url(request, data.registration_id)}
-    )
-    pdf_bytes = receipt_pdf_svc.build_registration_receipt_pdf(payload)
+def create_registration_receipt_pdf(data: RegistrationReceiptRequest):
+    pdf_bytes = receipt_pdf_svc.build_registration_receipt_pdf(data)
     filename = f'registration_{data.registration_id}.pdf'
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-        },
-    )
-
-
-@router.get("/{registration_id}/receipt-pdf")
-def get_registration_receipt_pdf(
-    registration_id: str,
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    receipt_data = svc.build_receipt_request(db, registration_id).model_copy(
-        update={"receipt_url": _build_receipt_url(request, registration_id)}
-    )
-    pdf_bytes = receipt_pdf_svc.build_registration_receipt_pdf(receipt_data)
-    filename = f'registration_{registration_id}.pdf'
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

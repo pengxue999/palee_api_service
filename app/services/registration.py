@@ -4,13 +4,11 @@ from sqlalchemy import func, and_
 from app.models.registration import Registration
 from app.models.registration_detail import RegistrationDetail
 from app.models.fee import Fee
-from app.models.subject_detail import SubjectDetail
 from app.models.tuition_payment import TuitionPayment
 from sqlalchemy import select
 from app.schemas.registration import (
     RegistrationCreate, RegistrationUpdate,
     RegistrationBulkCreate,
-    RegistrationReceiptRequest,
 )
 from app.configs.exceptions import NotFoundException, ConflictException, ValidationException
 from app.utils.foreign_key_helper import safe_delete_with_constraint_check
@@ -314,58 +312,3 @@ def delete(db: Session, registration_id: str):
     ).delete(synchronize_session='fetch')
 
     safe_delete_with_constraint_check(db, obj, "registration")
-
-
-def build_receipt_request(db: Session, registration_id: str) -> RegistrationReceiptRequest:
-    registration = db.query(Registration).options(
-        joinedload(Registration.student),
-        joinedload(Registration.discount),
-        joinedload(Registration.details)
-        .joinedload(RegistrationDetail.fee_rel)
-        .joinedload(Fee.subject_detail)
-        .joinedload(SubjectDetail.subject),
-        joinedload(Registration.details)
-        .joinedload(RegistrationDetail.fee_rel)
-        .joinedload(Fee.subject_detail)
-        .joinedload(SubjectDetail.level),
-    ).filter(Registration.registration_id == registration_id).first()
-
-    if not registration or not registration.student:
-        raise NotFoundException("ຂໍ້ມູນການລົງທະບຽນ")
-
-    selected_fees = []
-    tuition_fee = Decimal('0')
-    for detail in registration.details or []:
-        fee_rel = detail.fee_rel
-        subject_detail = fee_rel.subject_detail if fee_rel else None
-        subject = subject_detail.subject if subject_detail else None
-        level = subject_detail.level if subject_detail else None
-        fee_amount = Decimal(fee_rel.fee) if fee_rel and fee_rel.fee is not None else Decimal('0')
-        tuition_fee += fee_amount
-        selected_fees.append(
-            {
-                "subject_name": subject.subject_name if subject else "-",
-                "level_name": level.level_name if level else "-",
-                "fee": fee_amount,
-            }
-        )
-
-    total_fee = Decimal(registration.total_amount or 0)
-    net_fee = Decimal(registration.final_amount or 0)
-    discount_amount = max(total_fee - net_fee, Decimal('0'))
-    student_name = f"{registration.student.student_name} {registration.student.student_lastname}".strip()
-
-    return RegistrationReceiptRequest(
-        registration_id=registration.registration_id,
-        registration_date=registration.registration_date,
-        student_name=student_name,
-        selected_fees=selected_fees,
-        tuition_fee=tuition_fee,
-        mandatory_label=None,
-        mandatory_fee=Decimal('0'),
-        dormitory_label=None,
-        dormitory_fee=Decimal('0'),
-        total_fee=total_fee,
-        discount_amount=discount_amount,
-        net_fee=net_fee,
-    )
