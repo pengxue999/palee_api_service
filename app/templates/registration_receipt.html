@@ -451,15 +451,15 @@
             <div class="summary-label">{{ mandatory_label }}:</div>
             <div class="summary-value">{{ mandatory_fee }}</div>
           </div>
-          {% endif %} {% if has_discount %}
-          <div class="summary-row discount">
-            <div class="summary-label">ສ່ວນຫຼຸດ:</div>
-            <div class="summary-value">- {{ discount_amount }}</div>
-          </div>
           {% endif %} {% if has_dormitory_fee %}
           <div class="summary-row">
             <div class="summary-label">{{ dormitory_label }}:</div>
             <div class="summary-value">{{ dormitory_fee }}</div>
+          </div>
+          {% endif %} {% if has_discount %}
+          <div class="summary-row discount">
+            <div class="summary-label">ສ່ວນຫຼຸດ:</div>
+            <div class="summary-value">- {{ discount_amount }}</div>
           </div>
           {% endif %}
           <div class="summary-divider"></div>
