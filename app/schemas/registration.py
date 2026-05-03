@@ -44,6 +44,8 @@ class RegistrationReceiptRequest(BaseModel):
     student_name: str
     selected_fees: List[RegistrationReceiptFeeItem]
     tuition_fee: Decimal
+    mandatory_label: Optional[str] = None
+    mandatory_fee: Decimal = Decimal('0')
     dormitory_label: Optional[str] = None
     dormitory_fee: Decimal
     total_fee: Decimal

@@ -20,11 +20,14 @@ def build_registration_context(data: RegistrationReceiptRequest) -> dict[str, ob
             for item in data.selected_fees
         ],
         "tuition_fee": format_currency(data.tuition_fee),
+        "mandatory_label": data.mandatory_label or "ຄ່າວິຊາບັງຄັບ",
+        "mandatory_fee": format_currency(data.mandatory_fee),
         "dormitory_label": data.dormitory_label or "ຄ່າຫໍພັກ",
         "dormitory_fee": format_currency(data.dormitory_fee),
         "total_fee": format_currency(data.total_fee),
         "discount_amount": format_currency(data.discount_amount),
         "net_fee": format_currency(data.net_fee),
         "has_discount": data.discount_amount > 0,
+        "has_mandatory_fee": data.mandatory_fee > 0,
         "has_dormitory_fee": data.dormitory_fee > 0,
     }
