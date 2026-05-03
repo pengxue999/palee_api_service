@@ -3,6 +3,9 @@ from app.services.pdf.assets import font_data_urls
 from app.services.pdf.formatters import format_currency, format_date
 
 
+DORMITORY_LABEL = "ຄ່າຫໍພັກໃນ(ຄ່າໄຟ,ຄ່ານ້ຳ)"
+
+
 def build_registration_context(data: RegistrationReceiptRequest) -> dict[str, object]:
     regular_font_url, bold_font_url = font_data_urls()
     return {
@@ -22,7 +25,7 @@ def build_registration_context(data: RegistrationReceiptRequest) -> dict[str, ob
         "tuition_fee": format_currency(data.tuition_fee),
         "mandatory_label": data.mandatory_label or "ຄ່າວິຊາບັງຄັບ",
         "mandatory_fee": format_currency(data.mandatory_fee),
-        "dormitory_label": data.dormitory_label or "ຄ່າຫໍພັກ",
+        "dormitory_label": DORMITORY_LABEL,
         "dormitory_fee": format_currency(data.dormitory_fee),
         "total_fee": format_currency(data.total_fee),
         "discount_amount": format_currency(data.discount_amount),
