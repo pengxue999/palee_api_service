@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+env
+.playwright-browsers
+__pycache__
+**/__pycache__
+*.pyc
+.env
+.env.*
+.DS_Store
+playwright-report
+test-results
