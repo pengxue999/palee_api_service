@@ -16,5 +16,6 @@ RUN python -m playwright install chromium
 # Copy the application source.
 COPY . .
 
-# Railway injects $PORT at runtime. Shell form so the variable expands.
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# The app reads $PORT itself (see app/main.py __main__), so no shell
+# variable expansion is needed in the command.
+CMD ["python", "-m", "app.main"]
