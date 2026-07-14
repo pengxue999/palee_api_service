@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="lo">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      @page {
+        size: A4 landscape;
+        margin: 14mm 14mm 14mm 14mm;
+      }
+
+      @font-face {
+        font-family: "ReportLao";
+        src: url("{{ font_regular_url }}") format("truetype");
+        font-style: normal;
+        font-weight: 400;
+      }
+
+      @font-face {
+        font-family: "ReportLao";
+        src: url("{{ font_bold_url }}") format("truetype");
+        font-style: normal;
+        font-weight: 700;
+      }
+
+      :root {
+        --section-gap: 14px;
+        --ink: #111827;
+        --muted: #6b7280;
+        --line: #d1d5db;
+        --line-soft: #e5e7eb;
+        --panel: #f8fafc;
+        --panel-strong: #f3f4f6;
+        --header-fill: #eef2f7;
+        --row-alt: #fafafa;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: #ffffff;
+        font-family: "ReportLao", sans-serif;
+        font-size: 12px;
+      }
+
+      @media print {
+        .print-page-number {
+          position: fixed;
+          right: 0;
+          bottom: -16mm;
+          font-size: 10px;
+          color: var(--muted);
+        }
+        .print-page-number::after {
+          content: "Page " counter(page) " of " counter(pages);
+        }
+      }
+
+      @media screen {
+        .print-page-number {
+          display: none;
+        }
+      }
+
+      .page {
+        width: 100%;
+        padding: 0;
+      }
+      .sheet {
+        padding: 0;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        padding-bottom: 14px;
+        border-bottom: 2px solid var(--ink);
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .brand-subtitle {
+        margin: 4px 0 0;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+      }
+
+      .date-box {
+        min-width: 176px;
+        text-align: right;
+      }
+      .date-label {
+        margin: 0;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .date-value {
+        margin: 6px 0 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .title-block {
+        padding: 16px 0 12px;
+      }
+      .report-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.08;
+      }
+      .report-subtitle {
+        margin: 7px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .table-wrap {
+        margin-top: var(--section-gap);
+        break-inside: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      thead {
+        display: table-header-group;
+      }
+      tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      tbody {
+        page-break-inside: auto;
+        break-inside: auto;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line-soft);
+        padding: 8px;
+        vertical-align: middle;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+      th {
+        background: var(--header-fill);
+        color: #374151;
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        padding-top: 7px;
+        padding-bottom: 7px;
+      }
+      tbody tr:nth-child(even) {
+        background: var(--row-alt);
+      }
+      tbody td {
+        font-size: 11px;
+        line-height: 1.28;
+      }
+
+      .col-index {
+        width: 4%;
+        text-align: center;
+      }
+      .col-id {
+        width: 9%;
+        text-align: center;
+      }
+      .col-name {
+        width: 22%;
+        text-align: left;
+      }
+      .col-gender {
+        width: 5%;
+        text-align: center;
+      }
+      .col-school {
+        width: 22%;
+        text-align: left;
+      }
+      .col-district {
+        width: 12%;
+        text-align: left;
+      }
+      .col-province {
+        width: 12%;
+        text-align: left;
+      }
+      td.text-strong {
+        font-weight: 500;
+      }
+
+      .empty-state {
+        margin-top: 18px;
+        padding: 26px;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        text-align: center;
+        color: var(--muted);
+        background: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="sheet">
+        <div class="topbar">
+          <div>
+            <p class="brand-title">ສູນປາລີ ບຳລຸງນັກຮຽນເກັ່ງ</p>
+            <p class="brand-subtitle">Palee Elite Training Center</p>
+          </div>
+          <div class="date-box">
+            <p class="date-label">ວັນທີພິມ</p>
+            <p class="date-value">{{ generated_at }}</p>
+          </div>
+        </div>
+
+        <div class="title-block">
+          <h1 class="report-title">{{ report_title }}</h1>
+          <p class="report-subtitle">ຈຳນວນ {{ total_count }} ຄົນ</p>
+        </div>
+
+        {% if registrations %}
+        <div class="table-wrap">
+          <table>
+            <colgroup>
+              <col class="col-index" />
+              <col class="col-id" />
+              <col class="col-name" />
+              <col class="col-gender" />
+              <col class="col-school" />
+              <col class="col-district" />
+              <col class="col-province" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="col-index">ລຳດັບ</th>
+                <th class="col-id">ລະຫັດນັກຮຽນ</th>
+                <th class="col-name">ຊື່-ນາມສະກຸນ</th>
+                <th class="col-gender">ເພດ</th>
+                <th class="col-school">ມາຈາກໂຮງຮຽນ</th>
+                <th class="col-district">ເມືອງ</th>
+                <th class="col-province">ແຂວງ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for reg in registrations %}
+              <tr>
+                <td class="col-index">{{ loop.index }}</td>
+                <td class="col-id text-strong">{{ reg.student_id or '-' }}</td>
+                <td class="col-name text-strong">{{ reg.full_name or '-' }}</td>
+                <td class="col-gender">{{ reg.gender or '-' }}</td>
+                <td class="col-school">{{ reg.school or '-' }}</td>
+                <td class="col-district">{{ reg.district_name or '-' }}</td>
+                <td class="col-province">{{ reg.province_name or '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">ບໍ່ມີຂໍ້ມູນສຳລັບການພິມ</div>
+        {% endif %}
+      </div>
+      <div class="print-page-number" aria-hidden="true"></div>
+    </div>
+  </body>
+</html>
